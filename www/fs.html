@@ -9,113 +9,117 @@
   <meta name="author" content="Andriy Skoropad">
   <link rel="stylesheet" type="text/css" href="/css/bootstrap.css">
   <link rel="stylesheet" type="text/css" href="/css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14"></script>
+  <script src="/js/main.js"></script>
 
 </head>
 
 <body>
-  <div class="base-block">
-    <div id="fs-folder">
-      <!-- rendered with using renderFolder() -->
+  <div id="fs">
+    <div class="base-block">
+      Current folder: <code>{{currentFolder}}</code>
+    </div>
+    <div class="base-block">
+      <div class="already-selected">
+        <div class="fs-element" v-for="file in filesList" :key="file.path">
+          <span v-bind:class="{pointer: !file.isFile}" v-on:click="!file.isFile && openFolder(file.path)">
+            <span class="align-middle">
+              <folder-icon v-if="!file.isFile"></folder-icon>
+              <file-icon v-if="file.isFile"></file-icon>
+            </span>
+            <code class="align-middle">{{file.name}}</code>
+          </span>
+          <button v-if="!file.isFile" class="fs-action btn btn-default" v-on:click="openFolder(file.path)">Open</button>
+          <button v-if="(needToSelectFile && file.isFile) || (!needToSelectFile && !file.isFile)" class="fs-action btn btn-default" v-on:click="select(file.path)">Select</button>
+        </div>
+      </div>
+      <button v-if="!needToSelectFile" class="btn btn-default" v-on:click="selectCurrentFolder()">Select current folder</button>
     </div>
   </div>
-  <div class="base-block">
-    <div id="fs-list" class="already-selected">
-      <!-- rendered with using renderFolder() -->
-    </div>
-    <button onclick="selectCurrentFolder()">Select current folder</button>
-  </div>
+  
   
 
   <script>
-    const folderIcon = `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M10.59 4.59C10.21 4.21 9.7 4 9.17 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-1.41-1.41z"/></svg>`;
-    const fileIcon = `<svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><g><rect fill="none" height="24" width="24"/><path d="M14.17,3H5C3.9,3,3,3.9,3,5v14c0,1.1,0.9,2,2,2h14c1.1,0,2-0.9,2-2V9.83c0-0.53-0.21-1.04-0.59-1.41l-4.83-4.83 C15.21,3.21,14.7,3,14.17,3L14.17,3z M8,15h8c0.55,0,1,0.45,1,1v0c0,0.55-0.45,1-1,1H8c-0.55,0-1-0.45-1-1v0C7,15.45,7.45,15,8,15z M8,11h8c0.55,0,1,0.45,1,1v0c0,0.55-0.45,1-1,1H8c-0.55,0-1-0.45-1-1v0C7,11.45,7.45,11,8,11z M8,7h5c0.55,0,1,0.45,1,1v0 c0,0.55-0.45,1-1,1H8C7.45,9,7,8.55,7,8v0C7,7.45,7.45,7,8,7z"/></g></svg>`;
-
     let params = new URLSearchParams(document.location.search.substring(1));
     let type = params.get("type"); // folderForIgnore, basePath, baseModule, appPath
     let currentFolder = '';
     const needToSelectFile = type === 'baseModule';
 
-    function selectCurrentFolder() {
-      select(currentFolder);
-    }
 
-    // ------------- api ----------
-    function select(path) {
-      fetch(
-        `/api/select/${type}`,
-        { 
-          method: 'PUT',
-          headers: {
-            'Content-type': 'application/json; charset=UTF-8' // Indicates the content 
-          },
-          body: JSON.stringify({
-            path: decodeURIComponent(path)
-          })
+    const app = new Vue({
+        el: '#fs',
+        data: {
+          type,
+          currentFolder,
+          needToSelectFile,
+          currentFolder: '',
+          filesList: [],
         },
-      ).then(response => response.json())
-      .then(list => {
-        window.location.href = window.location.origin;
-        // renderIgnoreFolder(list);
-      });
-    }
+        beforeCreate: function () {
+          fetch('/api/get-folder-content')
+            .then(response => response.json())
+            .then(response => {
+              this.currentFolder = response[0].path;
+              this.filesList = response;
+            });
+        },
+        methods: {
+          selectCurrentFolder: function() {
+            this.select(this.currentFolder);
+          },
+          select: function(path) {
+            fetch(
+              `/api/select/${this.type}`,
+              { 
+                method: 'PUT',
+                headers: {
+                  'Content-type': 'application/json; charset=UTF-8' // Indicates the content 
+                },
+                body: JSON.stringify({
+                  path: decodeURIComponent(path)
+                })
+              },
+            ).then(response => response.json())
+            .then(list => {
+              window.location.href = window.location.origin;
+            });
+          },
+          openFolder: function(folder) {
+            let search = '';
+            if (folder) {
+              const folderDecoded = folder;
 
-    function openFolder(folder) {
-      let search = '';
-      if (folder) {
-        const folderDecoded = decodeURIComponent(folder);
+              if (folderDecoded === this.currentFolder) {
+                const folderList = folderDecoded.split('/');
 
-        if (folderDecoded === currentFolder) {
-          const folderList = folderDecoded.split('/');
+                if (folderList[folderList.length - 1] === '') {
+                  folderList.pop();
+                }
 
-          if (folderList[folderList.length - 1] === '') {
-            folderList.pop();
+                if (folderList[folderList.length - 1] === '.') {
+                  folderList.pop();
+                  folderList.push('../')
+                } else if (folderList[folderList.length - 1] === '..') {
+                  folderList.push('../')
+                } else {
+                  folderList.pop();
+                }
+                search = new URLSearchParams({folder: encodeURIComponent(folderList.join('/'))}).toString()
+              } else {
+                search = new URLSearchParams({folder: encodeURIComponent(folderDecoded)}).toString()
+              }
+            }
+
+            fetch('/api/get-folder-content' + (search ? `?${search}` : '') )
+              .then(response => response.json())
+              .then(response => {
+                this.currentFolder = response[0].path;
+                this.filesList = response;
+              });
           }
-
-          if (folderList[folderList.length - 1] === '.') {
-            folderList.pop();
-            folderList.push('../')
-          } else if (folderList[folderList.length - 1] === '..') {
-            folderList.push('../')
-          } else {
-            folderList.pop();
-          }
-
-          
-          search = new URLSearchParams({folder: encodeURIComponent(folderList.join('/'))}).toString()
-        } else {
-          search = new URLSearchParams({folder: encodeURIComponent(folderDecoded)}).toString()
         }
-      }
-
-      fetch('/api/get-folder-content' + (search ? `?${search}` : '') )
-        .then(response => response.json())
-        .then(response => {
-          currentFolder = response[0].path;
-          
-          document.getElementById('fs-folder').innerHTML = currentFolder;
-          renderFolder(response);
-        })
-    }
-
-
-    // --------- render ---------
-
-    function renderFolder(list) {
-      const htmlList = list.map(file => `
-      <div class="fs-element">
-        <span class="${!file.isFile ? 'pointer' : ''}" onclick="${!file.isFile} && openFolder('${encodeURIComponent(file.path)}')">
-          <span>${file.isFile ? fileIcon : folderIcon}</span>
-          <code>${file.name}</code>
-        </span>
-        ${!file.isFile ? `<button class="fs-action" onclick="openFolder('${encodeURIComponent(file.path)}')">Open</button>`: ``}
-        ${(needToSelectFile && file.isFile) || (!needToSelectFile && !file.isFile) ? `<button class="fs-action" onclick="select('${encodeURIComponent(file.path)}')">Select</button>`: ``}
-      </div>`).join('');
-      document.getElementById('fs-list').innerHTML = htmlList;
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      openFolder();
-    })
+    });
+    
   </script>
 </body>
 </html>

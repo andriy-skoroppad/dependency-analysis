@@ -6,3 +6,52 @@ Vue.component('folder-icon', {
 Vue.component('file-icon', {
     template: fileIcon,
 });
+
+/**
+ * <file-item
+    v-bind:path="path"
+    v-on:get-file="postFontSize += $event"
+    v-on:get-file-deps="postFontSize += $event"
+    ></file-item>
+ * 
+ */
+Vue.component('file-item', {
+    data: function() {
+        return {
+            depLevel: 2
+        };
+    },
+    props: ['path'],
+    template: `
+    <div class="fs-element">
+        <span>
+          <span class="align-middle">
+            <file-icon></file-icon>
+          </span>
+          <code class="align-middle">{{path}}</code>
+        </span>
+        <button class="btn btn-default" v-on:click="$emit('get-file', path)">Show</button>
+        <button class="btn btn-default" v-on:click="$emit('get-file-deps', {path, depLevel})">Deps</button>
+        <input style="width: 40px" type="number" v-model="depLevel" class="depLevel" />
+      </div>
+    `,
+});
+
+Vue.component('accordion', {
+    data: function() {
+        return {
+            opened: false
+        };
+    },
+    template: `
+    <div class="base-block">
+        <slot name="header"></slot>
+        <button class="btn btn-default" v-on:click="opened = !opened">
+            Toggle <slot name="number"></slot> elements visibility
+        </button>
+        <div v-if="opened" class="dep-block">
+            <slot></slot>
+        </div>
+    </div>
+    `,
+});
