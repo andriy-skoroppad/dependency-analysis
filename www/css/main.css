@@ -1,0 +1,67 @@
+body {
+background: rgb(230, 230, 230);
+}
+
+.base-block {
+border: 1px solid #000;
+padding: 6px;
+color: black;
+font-size: 14px;
+border-radius: 5px;
+background: #fff;
+margin: 10px;
+}
+
+.row {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+display: flex;
+flex-direction: row;
+align-items: stretch;
+justify-content: space-evenly;
+}
+
+.group-block {
+width: calc(46% - 20px);
+padding: 6px;
+box-sizing: border-box;
+}
+
+.pointer {
+cursor: pointer;
+}
+.fs-element {
+margin: 5px 0;
+}
+.fs-action {
+margin-left: 10px;
+}
+
+.popup {
+background-color: #fff;
+border: 1px solid #000;
+position: fixed;
+top: 40px;
+left: 40px;
+right: 40px;
+bottom: 40px;
+padding: 10px 20px 20px;
+overflow: auto;
+box-shadow: 2px -7px 33px 100px rgba(88, 88, 88, 0.56);
+}
+
+.popup-content {
+position: relative;
+}
+.popup-actions {
+text-align: right;
+width: 100%;
+}
+
+.dep-block {
+padding-left: 40px;
+}
+
+.align-middle {
+    vertical-align: middle;
+}

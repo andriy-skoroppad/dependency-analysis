@@ -1,0 +1,185 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>deep check</title>
+  <meta name="description" content="deep check">
+  <meta name="author" content="Andriy Skoropad">
+  <link rel="stylesheet" type="text/css" href="/css/bootstrap.css">
+  <link rel="stylesheet" type="text/css" href="/css/main.css">
+
+</head>
+
+<body>
+
+  <div class="base-block">
+    Files in folder with dep:
+    <div id="dep-files-in-folder-with-dep">
+      <!-- rendered with using renderDep() -->
+    </div>
+  </div>
+
+  <div class="base-block">
+    Files not in folder:
+    <div id="dep-files-not-in-folder">
+      <!-- rendered with using renderDep() -->
+    </div>
+  </div>
+
+  <div class="base-block">
+    Need to check:
+    <div id="dep-files-need-to-check">
+      <!-- rendered with using renderDep() -->
+    </div>
+  </div>
+  
+
+
+  <div class="popup" style="display: none;" id="file-wrap">
+    <div class="popup-actions"><button onclick="closeFile()">Close popup</button></div>
+    <div id="file-content">
+      <!-- rendered with using openFile() -->
+    </div>
+  </div>
+
+  
+  <script>
+    const folderIcon = `<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M10.59 4.59C10.21 4.21 9.7 4 9.17 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-1.41-1.41z"/></svg>`;
+    const fileIcon = `<svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000"><g><rect fill="none" height="24" width="24"/><path d="M14.17,3H5C3.9,3,3,3.9,3,5v14c0,1.1,0.9,2,2,2h14c1.1,0,2-0.9,2-2V9.83c0-0.53-0.21-1.04-0.59-1.41l-4.83-4.83 C15.21,3.21,14.7,3,14.17,3L14.17,3z M8,15h8c0.55,0,1,0.45,1,1v0c0,0.55-0.45,1-1,1H8c-0.55,0-1-0.45-1-1v0C7,15.45,7.45,15,8,15z M8,11h8c0.55,0,1,0.45,1,1v0c0,0.55-0.45,1-1,1H8c-0.55,0-1-0.45-1-1v0C7,11.45,7.45,11,8,11z M8,7h5c0.55,0,1,0.45,1,1v0 c0,0.55-0.45,1-1,1H8C7.45,9,7,8.55,7,8v0C7,7.45,7.45,7,8,7z"/></g></svg>`;
+
+  
+    // ------------- api ----------
+    function getDepends() {
+      fetch(`/api/analyze-result`).then(response => response.json())
+      .then(dep => {
+        const {
+          filesInFolderButHaveDeps,
+          filesOutOfFolderNeedToCheck,
+          filesRelatedNotInFolder,
+        } = dep;
+
+        renderDepList(filesInFolderButHaveDeps, 'dep-files-in-folder-with-dep');
+        renderDepList(filesOutOfFolderNeedToCheck, 'dep-files-need-to-check');
+        renderSimpleList(filesRelatedNotInFolder, 'dep-files-not-in-folder');
+      });
+    }
+
+    function getFile(filePath) {
+      const path = decodeURIComponent(filePath);
+      const search = new URLSearchParams({file: encodeURIComponent(path + '.ts')}).toString();
+
+      fetch('/api/get-file' + (search ? `?${search}` : '') )
+        .then(response => response.json())
+        .then(({file}) => {
+          openFile(file, path);
+        })
+    }
+
+    function getFileDeps(event, filePath) {
+      const depLevel = event.target.parentNode.getElementsByClassName('depLevel')[0].value;
+      const path = decodeURIComponent(filePath);
+      const search = new URLSearchParams({file: encodeURIComponent(path), depLevel}).toString();
+
+      fetch('/api/get-file-deps' + (search ? `?${search}` : '') )
+        .then(response => response.json())
+        .then(({svg}) => {
+          openSVG(svg, path);
+        })
+    }
+
+    // --------actions----------
+
+    function closeFile(){
+      document.getElementById('file-wrap').style.display = 'none';
+    }
+
+    function openFile(file, path){
+      const htmlText = `
+      <div class="fs-element">
+        <span>
+          <span>${fileIcon}</span>
+          <code>${path}</code>
+        </span>
+      </div>
+      <div class="popup-content">
+        <pre><code>${file}</code></pre>
+      </div>
+      `;
+
+      document.getElementById('file-content').innerHTML = htmlText;
+      document.getElementById('file-wrap').style.display = 'block';
+    }
+
+    function openSVG(svg, path){
+      const htmlText = `
+      <div class="fs-element">
+        <span>
+          <span>${fileIcon}</span>
+          <code>${path}</code>
+        </span>
+      </div>
+      <div class="popup-content">
+        ${svg}
+      </div>
+      `;
+
+      document.getElementById('file-content').innerHTML = htmlText;
+      document.getElementById('file-wrap').style.display = 'block';
+    }
+
+    function toggle(event) {
+      console.log(event.target);
+      const listBlock = event.target.parentNode.getElementsByClassName('dep-block')[0];
+      listBlock.style.display = listBlock.style.display === 'none' ? 'block' : 'none';
+    }
+
+
+    // --------- render ---------
+
+    function oneFileItem(path) {
+      return `
+      <div class="fs-element">
+        <span>
+          <span>${fileIcon}</span>
+          <code>${path}</code>
+        </span>
+        <button onclick="getFile('${encodeURIComponent(path)}')">Show</button>
+        <button onclick="getFileDeps(event, '${encodeURIComponent(path)}')">Deps</button>
+        <input type="number" value="2" class="depLevel" />
+      </div>`
+    }
+
+    function renderSimpleList(list, id) {
+      const htmlList = list.map(path => oneFileItem(path)).join('');
+      document.getElementById(id).innerHTML = htmlList;
+    }
+
+    function renderDepList(list, id) {
+      const htmlList = list.map(obj => {
+        const list = [];
+
+        for (let key in obj) {
+          list.push({path: key, dep: obj[key]});
+        }
+
+        return list.map(el => `
+        <div class="base-block">
+          ${oneFileItem(el.path)}
+          <button onclick="toggle(event)">Toggle ${el.dep.length} elements visibility</button>
+          <div style="display: none;" class="dep-block">
+            ${el.dep.map(path => oneFileItem(path)).join('')}
+          </div>
+        </div>
+        `).join('')
+      }).join('');
+      document.getElementById(id).innerHTML = htmlList;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      getDepends();
+    })
+  </script>
+</body>
+</html>
