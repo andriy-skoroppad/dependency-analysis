@@ -147,11 +147,11 @@ export class DepGenerator {
 
       this.filesInFolder = [...filesInFolder];
   
-      fs.writeFileSync('./result/test/filesInFolder.json', JSON.stringify(filesInFolder, null, 2), 'utf8');
-      fs.writeFileSync('./result/test/filesInFolderButHaveDeps.json', JSON.stringify(filesInFolderButHaveDeps, null, 2), 'utf8');
-      fs.writeFileSync('./result/test/filesOutOfFolderNeedToCheck.json', JSON.stringify(filesOutOfFolderNeedToCheck, null, 2), 'utf8');
-      fs.writeFileSync('./result/test/filesRelatedNotInFolder.json', JSON.stringify(filesRelatedNotInFolder, null, 2), 'utf8');
-      this.saveToFile(this.generateChartConfig(filesOutOfFolderNeedToCheckForChart, this.getModuleFolder()), './result/test/needForCheck.svg');;
+      fs.writeFileSync('./result/filesInFolder.json', JSON.stringify(filesInFolder, null, 2), 'utf8');
+      fs.writeFileSync('./result/filesInFolderButHaveDeps.json', JSON.stringify(filesInFolderButHaveDeps, null, 2), 'utf8');
+      fs.writeFileSync('./result/filesOutOfFolderNeedToCheck.json', JSON.stringify(filesOutOfFolderNeedToCheck, null, 2), 'utf8');
+      fs.writeFileSync('./result/filesRelatedNotInFolder.json', JSON.stringify(filesRelatedNotInFolder, null, 2), 'utf8');
+      this.saveToFile(this.generateChartConfig(filesOutOfFolderNeedToCheckForChart, this.getModuleFolder()), './result/needForCheck.svg');;
     } else {
       throw Error(`File not exist : (${this.baseModule})`);
     }
@@ -185,6 +185,7 @@ export class DepGenerator {
   getSVGDepForFile(path: string, depLevel = 10) {
     const dep = this.getDepForFile(path, depLevel);
     const config = this.generateChartConfig(dep, path);
+
     return this.getSvgChart(config);
   }
 
@@ -210,11 +211,12 @@ export class DepGenerator {
 
     const structure = [... new Set(fileIn)].map(path => `${pathWithoutNotSupportSymbols(path)} [label="${toNameInCamelCase(path)}" color=${path === startPath ? 'deepskyblue': 'black'}];\r\n`).join('');
     const filesInFolder: string[] = [... new Set(fileIn)].filter(path => path.includes(moduleFolder));
+    
     const subgraph =  `subgraph cluster_1 {
       style=filled;
       color=lightgrey;
       node [style=filled,color=white];
-      ${filesInFolder.map(path => pathWithoutNotSupportSymbols(path)).join(' ')};
+      ${filesInFolder.map(path => pathWithoutNotSupportSymbols(path)).join(' ')}${filesInFolder.length ? ';' : ''}
       label = "${toNameInCamelCase(this.baseModule)}";
     }
     
@@ -240,6 +242,7 @@ export class DepGenerator {
   }
 
   getSvgChart(config: string): Promise<string> {
+    fs.writeFileSync('./result/svgGrafConfig.txt', config, 'utf8');
     return new Promise(resolve => {
       const renderOptions = { format:"svg" };
   

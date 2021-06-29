@@ -10,8 +10,10 @@ Vue.component('file-icon', {
 /**
  * <file-item
     v-bind:path="path"
+    v-bind:checked="checked"
     v-on:get-file="postFontSize += $event"
     v-on:get-file-deps="postFontSize += $event"
+    v-on:set-checked="postFontSize = $event"
     ></file-item>
  * 
  */
@@ -21,7 +23,7 @@ Vue.component('file-item', {
             depLevel: 2
         };
     },
-    props: ['path'],
+    props: ['path', 'checked'],
     template: `
     <div class="fs-element">
         <span>
@@ -30,9 +32,11 @@ Vue.component('file-item', {
           </span>
           <code class="align-middle">{{path}}</code>
         </span>
-        <button class="btn btn-default" v-on:click="$emit('get-file', path)">Show</button>
-        <button class="btn btn-default" v-on:click="$emit('get-file-deps', {path, depLevel})">Deps</button>
-        <input style="width: 40px" type="number" v-model="depLevel" class="depLevel" />
+        <button v-if="!checked" class="btn btn-default" v-on:click="$emit('get-file', path)">Show</button>
+        <button v-if="!checked" class="btn btn-default" v-on:click="$emit('get-file-deps', {path, depLevel})">Deps</button>
+        <input v-if="!checked" style="width: 40px" type="number" v-model="depLevel" class="depLevel" />
+        |
+        <button class="btn btn-default" v-on:click="$emit('set-checked', {path, checked: !checked})">{{checked ? 'set un check' : 'set checked'}}</button>
       </div>
     `,
 });
@@ -43,13 +47,14 @@ Vue.component('accordion', {
             opened: false
         };
     },
+    props: ['visible'],
     template: `
     <div class="base-block">
         <slot name="header"></slot>
-        <button class="btn btn-default" v-on:click="opened = !opened">
+        <button v-if="visible" class="btn btn-default" v-on:click="opened = !opened">
             Toggle <slot name="number"></slot> elements visibility
         </button>
-        <div v-if="opened" class="dep-block">
+        <div v-if="visible && opened" class="dep-block">
             <slot></slot>
         </div>
     </div>
