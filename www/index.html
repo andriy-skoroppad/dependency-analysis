@@ -63,9 +63,12 @@
                 <div>Actions:</div>
             
                 <div class="already-selected">
-                    <button class="btn btn-default" v-on:click="analyze">Analyze</button>
-                    <a v-if="analyzingFinished" class="btn btn-default" href="/result">Show result</a>
-                    <div>Status: {{analyzing ? 'Analyzing in progress' : ''}}</div>
+                  <button class="btn btn-default" v-on:click="analyze">Analyze</button>
+
+                  <button v-if="analyzingFinished" class="btn btn-default" v-on:click="generateFileWithProjectDeps">generate File With Project Deps</button>
+
+                  <a v-if="analyzingFinished" class="btn btn-default" href="/result">Show result</a>
+                  <div>Status: {{analyzing ? 'Analyzing in progress' : ''}}</div>
                 </div>
               </div>
             </div>
@@ -177,6 +180,15 @@
                 .then(list => {
                     this.analyzing = false;
                     this.analyzingFinished = true;
+                });
+            },
+            generateFileWithProjectDeps: function () {
+                this.analyzing = true;
+
+                fetch(`/api/generate-file-with-project-deps`)
+                .then(response => response.json())
+                .then(list => {
+                    this.analyzing = false;
                 });
             },
         }

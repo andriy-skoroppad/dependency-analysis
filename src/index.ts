@@ -209,6 +209,7 @@ app.put('/api/select/:type', async (request, res) => {
 app.get('/api/analyze-module', async (request, res) => {
   try {
     if (config.basePath && config.baseModule && config.appPath) {
+      console.log(config.tsConfigMinPath);
       depGenerator = new DepGenerator(config.folderForIgnore, config.basePath, config.baseModule, config.appPath, config.tsConfigMinPath);
 
       depGenerator.start();
@@ -282,6 +283,16 @@ app.get('/api/get-file-deps', async (request, res) => {
   }
 });
 
+app.get('/api/generate-file-with-project-deps', async (request, res) => {
+  try {
+    depGenerator.generateFileWithProjectDeps();
+    res.status(200).send({});
+    } catch (e) {
+      console.log(e);
+      res.status(400).send({message: "", errorKey: "BAD.REQUEST", errorDescription: JSON.stringify(e)});
+  }
+});
+
  // -------- start server and open browser --------
 app.listen( 9010, function () {
   const url = 'http://localhost:9010';
@@ -295,11 +306,20 @@ app.listen( 9010, function () {
 
 // tsconfig file !!!!!
 
+// todo: scan all folder and add to config
+
 function updateTsConfigMinPath(appPath: string) {
   try {
     let tsconfig = fs.readFileSync(`${appPath}/tsconfig.json`, 'utf8').toString();
-    tsconfig = tsconfig.replace(/\/\/.+/g, '');
+
+    const folders = fs.readdirSync(appPath).filter(element => fs.statSync(`${appPath}/${element}`).isDirectory());
+    
+    tsconfig = tsconfig.replace(/\/\/.+/g, '').replace(/\t| |\r\n|\r|\n/g, '').replace(/\,\}/g, '}');
     const tsconfigObj = JSON.parse(tsconfig);
+    config.tsConfigMinPath = {};
+    folders.forEach(folder => {
+      config.tsConfigMinPath[folder] = `${appPath}/${folder}`;
+    });
     // todo: fix issue with multiple
     if (tsconfigObj.compilerOptions && tsconfigObj.compilerOptions.paths) {
       for (let key in tsconfigObj.compilerOptions.paths) {
@@ -307,6 +327,7 @@ function updateTsConfigMinPath(appPath: string) {
       }
     }
   } catch(e) {
-
+    console.error(e);
   }
 }
+
