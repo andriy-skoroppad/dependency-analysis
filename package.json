@@ -1,6 +1,6 @@
 {
-  "name": "deep-check",
-  "version": "1.0.0",
+  "name": "dependency-analysis",
+  "version": "0.0.3",
   "description": "",
   "main": "dest/index.js",
   "dependencies": {
@@ -21,9 +21,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon src/index.ts",
-    "build": "tsc --project ./",
-    "start:old": "node index.js"
+    "build": "tsc --project ./"
   },
-  "author": "Andriy",
+  "author": "andriy-skoroppad",
   "license": "ISC"
 }

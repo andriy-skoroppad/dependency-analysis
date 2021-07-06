@@ -19,7 +19,6 @@ interface ISimpleMap <T>{
 }
 
 
-
 function readFolder(directoryPath: string) {
   try {
 
@@ -119,7 +118,7 @@ function generateDigraphConfig(data:FileObj[]) {
         style=filled;
         color=lightgrey;
         node [style=filled,color=white];
-        ${elements};
+        ${elements}${elements.length ? ';': ''}
         label = "${pathWithoutNotSupportSymbols(el.path)}";
       }
       

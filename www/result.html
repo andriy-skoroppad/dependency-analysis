@@ -20,22 +20,25 @@
     <div class="base-block">
       Files in folder with dep:
       <div>
-        <accordion v-for="file in filesInFolderButHaveDeps" :key="file.path">
+        <accordion v-for="file in filesInFolderButHaveDeps" :key="file.path" v-bind:visible="!checkedMap[file.path]">
           <template v-slot:header>
             <file-item
               v-bind:path="file.path"
+              v-bind:checked="checkedMap[file.path]"
               v-on:get-file="getFile"
               v-on:get-file-deps="getFileDeps"
+              v-on:set-checked="setChecked"
             ></file-item>
           </template>
           
           <template v-slot:number>{{file.dep.length}}</template>
 
           <file-item
-            v-for="path in file.dep" :key="path"
-            v-bind:path="path"
+            v-bind:path="file.path"
+            v-bind:checked="checkedMap[file.path]"
             v-on:get-file="getFile"
             v-on:get-file-deps="getFileDeps"
+            v-on:set-checked="setChecked"
           ></file-item>
 
         </accordion>
@@ -49,8 +52,10 @@
         <file-item
           v-for="path in filesRelatedNotInFolder" :key="path"
           v-bind:path="path"
+          v-bind:checked="checkedMap[path]"
           v-on:get-file="getFile"
           v-on:get-file-deps="getFileDeps"
+          v-on:set-checked="setChecked"
         ></file-item>
       </div>
     </div>
@@ -58,13 +63,15 @@
     <div class="base-block">
       Need to check:
       <div id="dep-files-need-to-check">
-        <accordion v-for="file in filesOutOfFolderNeedToCheck" :key="file.path">
+        <accordion v-for="file in filesOutOfFolderNeedToCheck" :key="file.path" v-bind:visible="!checkedMap[file.path]">
           
           <template v-slot:header>
             <file-item
               v-bind:path="file.path"
+              v-bind:checked="checkedMap[file.path]"
               v-on:get-file="getFile"
               v-on:get-file-deps="getFileDeps"
+              v-on:set-checked="setChecked"
             ></file-item>
           </template>
           
@@ -72,9 +79,11 @@
 
           <file-item
             v-for="path in file.dep" :key="path"
-            v-bind:path="path"
-            v-on:get-file="getFile"
-            v-on:get-file-deps="getFileDeps"
+              v-bind:path="path"
+              v-bind:checked="checkedMap[path]"
+              v-on:get-file="getFile"
+              v-on:get-file-deps="getFileDeps"
+              v-on:set-checked="setChecked"
           ></file-item>
 
         </accordion>
@@ -130,6 +139,7 @@
           filesInFolderButHaveDeps: [],
           filesOutOfFolderNeedToCheck: [],
           filesRelatedNotInFolder: [],
+          checkedMap: {},
           filePopup: {
             show: false,
             path: '',
@@ -154,8 +164,46 @@
               this.filesOutOfFolderNeedToCheck = prepareList(filesOutOfFolderNeedToCheck);
               this.filesRelatedNotInFolder = filesRelatedNotInFolder;
             });
+          fetch(`/api/checked`).then(response => response.json())
+            .then(checked => {
+              this.checkedMap = checked.reduce((ac, el) => {
+                ac[el] = true;
+                return ac;
+              }, ({}))
+            });
         },
         methods: {
+          setChecked({path, checked}) {
+            if (checked) {
+
+              fetch(
+                `/api/checked`,
+                { 
+                  method: 'POST',
+                  headers: {
+                    'Content-type': 'application/json; charset=UTF-8' // Indicates the content 
+                  },
+                  body: JSON.stringify({ path })
+                },
+            ).then(response => response.json())
+            .then(checked => {
+              this.checkedMap = checked.reduce((ac, el) => {
+                    ac[el] = true;
+                    return ac;
+                  }, ({}));
+            });
+
+            } else {
+              fetch(`/api/checked/${encodeURIComponent(path)}`, { method: 'DELETE' })
+                .then(response => response.json())
+                .then(checked => {
+                  this.checkedMap = checked.reduce((ac, el) => {
+                    ac[el] = true;
+                    return ac;
+                  }, ({}));
+                });
+            }
+          },
           openSvgPopup(path, svg) {
             this.svgPopup = {...this.svgPopup, path, svg, show: true};
           },

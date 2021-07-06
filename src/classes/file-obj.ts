@@ -25,22 +25,32 @@ export class FileObj {
    }
  
    setImportsModuleList(file: string, depVar: Depends[]) {
- 
+    console.log('setImportsModuleList start');
      let importsString = '';
-     file.replace(/imports: *?\[((?:.|(?:\r\n))+?)\](?!\))/, (searchValue, p1) => {
+     file.replace(/imports: *?\[((?:(?:.+?\..+?\((?:.|\r\n|\r|\n)*?\))|.|(?:\r\n|\r|\n))+?)\](?!\))/g, (searchValue, p1) => {
        importsString = p1;
- 
+       console.log('setImportsModuleList replace');
        return searchValue;
      });
+
+     console.log(importsString);
  
      if (!importsString.length) {
        return;
      }
  
  
-     importsString = importsString.replace(/\..+?\(((?:.|(?:\r\n))+?)\)/g, '');
- 
-     const arrayWithModules = importsString.replace(/ |(?:\r\n)|\..+?\((?:.|(?:\r\n|\r|\n))+?\)/g, '').trim().replace(/,$/, '').split(',');
+    //  importsString = importsString.replace(/\..+?\(((?:.|(?:\r\n))+?)\)/g, '');
+     importsString = importsString.replace(/\..+?\((?:.|\n|\r|\r\n)*?\)/g, '').replace(/\.\.\./g, '');
+
+
+     const arrayWithModules = importsString
+      .replace(/ |(?:\r\n)|\..+?\((?:.|(?:\r\n|\r|\n))*?\)/g, '')
+      .trim()
+      .replace(/,$/, '')
+      .split(',')
+      .map(el => el.trim())
+      .filter(el => !!el);
  
      const mapOfName = depVar.reduce((acum: ISimpleMap<string>, dep: Depends) => {
        dep.depVar.forEach((val: string) => acum[val] = dep.path);

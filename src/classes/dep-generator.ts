@@ -9,7 +9,7 @@ import {
   folderForIgnore as folderForIgnoreFromConfig,
   tsConfigMinPath as appTsConfigMinPath
 } from "../configs/configs";
-import { isTsFile, pathWithoutNotSupportSymbols, pureFileName, toNameInCamelCase } from '../functions/helpers';
+import { addTransparent, dependsPathMapCount, getRandomColor, isTsFile, pathWithoutNotSupportSymbols, pureFileName, toNameInCamelCase } from '../functions/helpers';
 import { ISimpleMap } from '../interfaces/simple-map.interface';
 import { FileObj } from "./file-obj";
 
@@ -18,6 +18,7 @@ export class DepGenerator {
   fileList: FileObj[] = [];
   reversDepends: ISimpleMap<string[]> = {};
   filesInFolder: string[] = [];
+  subgraphObj: {path: string, listOfPath: string[]}[] = [];
 
   constructor(
     private folderForIgnore: string[] = folderForIgnoreFromConfig,
@@ -31,13 +32,14 @@ export class DepGenerator {
     this.readFolder(this.basePath, () => {
       fs.writeFileSync('./result/allFileDepend.json', JSON.stringify(this.fileList, null, 2), 'utf8');
       this.prepareListOfOtOfFolderFiles();
-      // generateDigraphConfig(fileList.sort((a, b) => a.deeps - b.deeps));
+      // this.generateDigraphConfig(this.fileList.sort((a, b) => a.deeps - b.deeps));
     });
   }
 
   readFolder(directoryPath: string, callback: () => void) {
     try {
   
+      
       const files = fs.readdirSync(directoryPath);
   
       files.forEach((name) => {
@@ -48,7 +50,7 @@ export class DepGenerator {
           if (isTsFile(path)) {
   
             let file = fs.readFileSync(path, 'utf8').toString();
-  
+            console.log('readFile:', path);
             this.fileList.push(new FileObj(path, file, this.tsConfigMinPath));
           }
         } else {
@@ -147,11 +149,11 @@ export class DepGenerator {
 
       this.filesInFolder = [...filesInFolder];
   
-      fs.writeFileSync('./result/test/filesInFolder.json', JSON.stringify(filesInFolder, null, 2), 'utf8');
-      fs.writeFileSync('./result/test/filesInFolderButHaveDeps.json', JSON.stringify(filesInFolderButHaveDeps, null, 2), 'utf8');
-      fs.writeFileSync('./result/test/filesOutOfFolderNeedToCheck.json', JSON.stringify(filesOutOfFolderNeedToCheck, null, 2), 'utf8');
-      fs.writeFileSync('./result/test/filesRelatedNotInFolder.json', JSON.stringify(filesRelatedNotInFolder, null, 2), 'utf8');
-      this.saveToFile(this.generateChartConfig(filesOutOfFolderNeedToCheckForChart, this.getModuleFolder()), './result/test/needForCheck.svg');;
+      fs.writeFileSync('./result/filesInFolder.json', JSON.stringify(filesInFolder, null, 2), 'utf8');
+      fs.writeFileSync('./result/filesInFolderButHaveDeps.json', JSON.stringify(filesInFolderButHaveDeps, null, 2), 'utf8');
+      fs.writeFileSync('./result/filesOutOfFolderNeedToCheck.json', JSON.stringify(filesOutOfFolderNeedToCheck, null, 2), 'utf8');
+      fs.writeFileSync('./result/filesRelatedNotInFolder.json', JSON.stringify(filesRelatedNotInFolder, null, 2), 'utf8');
+      this.saveToFile(this.generateChartConfig(filesOutOfFolderNeedToCheckForChart, this.getModuleFolder()), './result/needForCheck.svg');;
     } else {
       throw Error(`File not exist : (${this.baseModule})`);
     }
@@ -185,7 +187,112 @@ export class DepGenerator {
   getSVGDepForFile(path: string, depLevel = 10) {
     const dep = this.getDepForFile(path, depLevel);
     const config = this.generateChartConfig(dep, path);
+
     return this.getSvgChart(config);
+  }
+
+  generateFileWithProjectDeps() {
+    this.generateDigraphConfig(this.fileList.sort((a, b) => a.deeps - b.deeps));
+  }
+
+  generateDigraphConfig(data:FileObj[]) {
+    let relations = '';
+    let relationsSimple = '';
+    let structure = '';
+    let subgraph = '';
+    const mapOfPathCounts = dependsPathMapCount(data);
+    const addedToStructureMap: ISimpleMap<boolean> = {};
+  
+    data.forEach(parent => {
+      if (!(parent.type === 'module' /*|| parent.type === 'component'*/)) return;
+  
+      this.subgraphObj.forEach(el => {
+        if (parent.path.indexOf(el.path) !== -1) {
+          el.listOfPath.push(parent.path)
+        }
+      })
+  
+      if (parent.importsModuleList.length) {
+        structure += `${pathWithoutNotSupportSymbols(parent.path)} [label="${toNameInCamelCase(parent.path)} | ${structureCreator(parent.importsModuleList)}" color="${addTransparent('#000000', false && mapOfPathCounts[parent.path] === 1)}"];\r\n`;
+  
+        addedToStructureMap[pathWithoutNotSupportSymbols(parent.path)] = true;
+      }
+    });
+  
+    data.forEach(parent => {
+      if (!(parent.type === 'module' /*|| parent.type === 'component'*/)) return;
+      const color = getRandomColor();
+  
+      parent.depends.forEach(depend => {
+        if (!(depend.type === 'module' /*|| depend.type === 'component'*/)) return;
+  
+        if (!addedToStructureMap[pathWithoutNotSupportSymbols(depend.path)]) {
+          this.subgraphObj.forEach(el => {
+            if (depend.path.indexOf(el.path) !== -1) {
+              el.listOfPath.push(depend.path)
+            }
+          });
+  
+          structure += `${pathWithoutNotSupportSymbols(depend.path)} [label="${toNameInCamelCase(depend.path)}" color="${addTransparent('#000000', false && mapOfPathCounts[depend.path] === 1)}"];\r\n`;
+  
+          addedToStructureMap[pathWithoutNotSupportSymbols(depend.path)] = true;
+        }
+  
+        depend.depVar.forEach(name => {
+          relations += `${pathWithoutNotSupportSymbols(depend.path)} -> ${pathWithoutNotSupportSymbols(parent.path)}:${name} [color="${addTransparent(color, false && mapOfPathCounts[depend.path] === 1)}"];\r\n`;
+        });
+  
+        relationsSimple += `"${pureFileName(depend.path)}" -> "${pureFileName(parent.path)}" [color="${addTransparent(color, false && mapOfPathCounts[depend.path] === 1)}"];\r\n`;
+  
+      });
+    });
+  
+    this.subgraphObj.forEach((el, i) => {
+      if (el.listOfPath.length === 0) return;
+  
+      const elements = el.listOfPath.map(path => pathWithoutNotSupportSymbols(path)).join(' ');
+      const text = `subgraph cluster_${i} {
+          style=filled;
+          color=lightgrey;
+          node [style=filled,color=white];
+          ${elements}${elements.length ? ';': ''}
+          label = "${pathWithoutNotSupportSymbols(el.path)}";
+        }
+        
+        `;
+  
+        subgraph += text;
+    })
+  
+    const file =  `digraph mygraph {
+      //size="6,6";
+      rankdir=LR
+      node [shape=record];
+      ${structure}
+  
+      ${subgraph}
+  
+      ${relations}
+    }`;
+  
+    const simpleFile =  `digraph mygraph {
+  
+      ${relationsSimple}
+    }`;
+  
+    fs.writeFileSync('./result/pureData.json', JSON.stringify(data, null, 2), 'utf8');
+    fs.writeFileSync('./result/addedToStructureMap.json', JSON.stringify(addedToStructureMap, null, 2), 'utf8');
+    fs.writeFileSync('./result/mapOfPathCounts.json', JSON.stringify(mapOfPathCounts, null, 2), 'utf8');
+    
+    fs.writeFileSync('./result/digraphConfig.txt', file, 'utf8');
+    fs.writeFileSync('./result/simpleDigraphConfig.txt', simpleFile, 'utf8');
+  
+    this.saveToFile(file, './result/digraphConfig.svg');
+    this.saveToFile(simpleFile, './result/simpleDigraphConfig.svg');
+  
+    function structureCreator(importsModuleList: { name: string, path: string }[]) {
+      return importsModuleList.map(({name}) => `<${name}> ${name}`).join('|');
+    }
   }
 
   generateChartConfig(data: ISimpleMap<string[]>[], startPath = this.getModuleFolder()) {
@@ -210,11 +317,12 @@ export class DepGenerator {
 
     const structure = [... new Set(fileIn)].map(path => `${pathWithoutNotSupportSymbols(path)} [label="${toNameInCamelCase(path)}" color=${path === startPath ? 'deepskyblue': 'black'}];\r\n`).join('');
     const filesInFolder: string[] = [... new Set(fileIn)].filter(path => path.includes(moduleFolder));
+    
     const subgraph =  `subgraph cluster_1 {
       style=filled;
       color=lightgrey;
       node [style=filled,color=white];
-      ${filesInFolder.map(path => pathWithoutNotSupportSymbols(path)).join(' ')};
+      ${filesInFolder.map(path => pathWithoutNotSupportSymbols(path)).join(' ')}${filesInFolder.length ? ';' : ''}
       label = "${toNameInCamelCase(this.baseModule)}";
     }
     
@@ -240,6 +348,7 @@ export class DepGenerator {
   }
 
   getSvgChart(config: string): Promise<string> {
+    fs.writeFileSync('./result/svgGrafConfig.txt', config, 'utf8');
     return new Promise(resolve => {
       const renderOptions = { format:"svg" };
   

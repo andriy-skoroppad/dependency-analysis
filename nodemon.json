@@ -2,6 +2,7 @@
   "ignore": [
     "*.test.js",
     "build/*",
-    "result/*"
+    "result/*",
+    "session/*"
   ]
 }
