@@ -265,8 +265,8 @@ app.get('/api/get-file-deps', async (request, res) => {
     const file = typeof request.query.file === 'string' ? decodeURIComponent(request.query.file) : '';
     const depLevel = typeof request.query.depLevel === 'string' ? decodeURIComponent(request.query.depLevel) : '';
 
-    const body = {
-      svg: null,
+    const body: {svg: string} = {
+      svg: '',
     };
 
     if (file) {
